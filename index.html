@@ -1,12 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>กำลังเข้าสู่ระบบ...</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Sarabun,sans-serif;
+    background:#EEF1EF;
+    color:#5B6B67;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    text-align:center;
+    padding:20px;
+    box-sizing:border-box;
+  }
+  .box{max-width:340px;}
+  .spin{
+    width:34px;height:34px;border-radius:50%;
+    border:3px solid #DCE3DF;border-top-color:#2F6F5E;
+    margin:0 auto 16px auto;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #msg{font-size:14px;line-height:1.6;}
+  .retry-btn{
+    margin-top:16px;border:none;background:#2F6F5E;color:#fff;
+    padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;display:none;
+  }
+</style>
 </head>
 <body>
-    <h1>Hello World</h1>
-    <p>This is a sample HTML file.</p>
+<div class="box">
+  <div class="spin"></div>
+  <div id="msg">กำลังเข้าสู่ระบบผ่าน LINE...</div>
+  <button class="retry-btn" id="retryBtn" onclick="location.reload()">ลองใหม่อีกครั้ง</button>
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// ตั้งค่าตรงนี้เท่านั้น (ไม่ต้องแก้ไฟล์อื่น)
+// ------------------------------------------------------------------
+var LIFF_ID = '2010633264-YTJe5dbM'; // เปลี่ยนตามหน้าที่จะให้ Gateway นี้เสิร์ฟ ถ้าทำแยกไฟล์ต่อ LIFF App
+var GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec';
+
+// อ่านหน้าเป้าหมายจาก query string ของ Gateway เอง เช่น index.html?dest=admin
+// ถ้าไม่ระบุ default ไปหน้า user
+var qs = new URLSearchParams(window.location.search);
+var dest = qs.get('dest') || 'user';
+
+function showError(text){
+  document.querySelector('.spin').style.display = 'none';
+  document.getElementById('msg').textContent = text;
+  document.getElementById('retryBtn').style.display = 'inline-block';
+}
+
+liff.init({ liffId: LIFF_ID }).then(function () {
+  if (!liff.isLoggedIn()) {
+    liff.login(); // จะ redirect ไปหน้า LINE Login แล้ววนกลับมาที่ Gateway นี้อีกครั้ง
+    return null;
+  }
+  return liff.getProfile();
+}).then(function (profile) {
+  if (!profile) return; // กำลัง redirect ไป login อยู่
+  var target = GAS_EXEC_URL
+    + '?page=' + encodeURIComponent(dest)
+    + '&uid=' + encodeURIComponent(profile.userId)
+    + '&name=' + encodeURIComponent(profile.displayName || '');
+  window.location.href = target;
+}).catch(function (err) {
+  showError('เข้าสู่ระบบผ่าน LINE ไม่สำเร็จ: ' + (err && err.message ? err.message : JSON.stringify(err)));
+});
+</script>
 </body>
 </html>
+HTMLEOF
+echo "gateway created"
+wc -l /home/claude/build/gateway/index.html
+Output
+
+gateway created
+80 /home/claude/build/gateway/index.html
