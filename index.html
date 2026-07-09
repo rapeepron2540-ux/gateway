@@ -1,87 +1,41 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>กำลังเข้าสู่ระบบ...</title>
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<style>
-  body{
-    margin:0;
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Sarabun,sans-serif;
-    background:#EEF1EF;
-    color:#5B6B67;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    min-height:100vh;
-    text-align:center;
-    padding:20px;
-    box-sizing:border-box;
-  }
-  .box{max-width:340px;}
-  .spin{
-    width:34px;height:34px;border-radius:50%;
-    border:3px solid #DCE3DF;border-top-color:#2F6F5E;
-    margin:0 auto 16px auto;
-    animation:spin .8s linear infinite;
-  }
-  @keyframes spin{to{transform:rotate(360deg);}}
-  #msg{font-size:14px;line-height:1.6;}
-  .retry-btn{
-    margin-top:16px;border:none;background:#2F6F5E;color:#fff;
-    padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;display:none;
-  }
-</style>
+    <meta charset="UTF-8">
+    <title>LINE LIFF Gateway</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
-<div class="box">
-  <div class="spin"></div>
-  <div id="msg">กำลังเข้าสู่ระบบผ่าน LINE...</div>
-  <button class="retry-btn" id="retryBtn" onclick="location.reload()">ลองใหม่อีกครั้ง</button>
-</div>
+    <p>กำลังเข้าสู่ระบบ...</p>
 
-<script>
-// ------------------------------------------------------------------
-// ตั้งค่าตรงนี้เท่านั้น (ไม่ต้องแก้ไฟล์อื่น)
-// ------------------------------------------------------------------
-var LIFF_ID = '2010633264-YTJe5dbM'; // เปลี่ยนตามหน้าที่จะให้ Gateway นี้เสิร์ฟ ถ้าทำแยกไฟล์ต่อ LIFF App
-var GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec';
+    <script>
+        const LIFF_ID = '2010633264-YTJe5dbM'; // ใส่ LIFF ID เต็มของคุณตรงนี้
+        const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec'; // URL ของ Apps Script
 
-// อ่านหน้าเป้าหมายจาก query string ของ Gateway เอง เช่น index.html?dest=admin
-// ถ้าไม่ระบุ default ไปหน้า user
-var qs = new URLSearchParams(window.location.search);
-var dest = qs.get('dest') || 'user';
+        // ฟังก์ชันดึง Query Parameter จาก URL ของ Gateway เอง (เพื่อส่งต่อหน้า page ไปให้ GAS)
+        function getUrlParam(name) {
+            const results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+            return results ? Object.assign(results)[1] : null;
+        }
 
-function showError(text){
-  document.querySelector('.spin').style.display = 'none';
-  document.getElementById('msg').textContent = text;
-  document.getElementById('retryBtn').style.display = 'inline-block';
-}
-
-liff.init({ liffId: LIFF_ID }).then(function () {
-  if (!liff.isLoggedIn()) {
-    liff.login(); // จะ redirect ไปหน้า LINE Login แล้ววนกลับมาที่ Gateway นี้อีกครั้ง
-    return null;
-  }
-  return liff.getProfile();
-}).then(function (profile) {
-  if (!profile) return; // กำลัง redirect ไป login อยู่
-  var target = GAS_EXEC_URL
-    + '?page=' + encodeURIComponent(dest)
-    + '&uid=' + encodeURIComponent(profile.userId)
-    + '&name=' + encodeURIComponent(profile.displayName || '');
-  window.location.href = target;
-}).catch(function (err) {
-  showError('เข้าสู่ระบบผ่าน LINE ไม่สำเร็จ: ' + (err && err.message ? err.message : JSON.stringify(err)));
-});
-</script>
+        liff.init({ liffId: LIFF_ID })
+            .then(() => {
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    // ดึง ID Token ที่ได้จากการ Login สำเร็จ (เป็นค่า JWT ที่ปลอมแปลงไม่ได้)
+                    const idToken = liff.getIDToken();
+                    const destPage = getUrlParam('page') || 'user'; // ถ้าไม่ได้ส่งหน้ามา ให้ default ไป user
+                    
+                    // ส่ง idToken ไปที่ Apps Script ผ่าน URL Parameter
+                    const targetUrl = GAS_EXEC_URL + '?page=' + destPage + '&idToken=' + encodeURIComponent(idToken);
+                    window.location.href = targetUrl;
+                }
+            })
+            .catch((err) => {
+                console.error('LIFF Initialization failed', err);
+                document.body.innerHTML = '<p>เกิดข้อผิดพลาดในการเชื่อมต่อ LINE</p>';
+            });
+    </script>
 </body>
 </html>
-HTMLEOF
-echo "gateway created"
-wc -l /home/claude/build/gateway/index.html
-Output
-
-gateway created
-80 /home/claude/build/gateway/index.html
