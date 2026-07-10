@@ -61,7 +61,10 @@
             markLoginAttempt();
             updateStatus(message);
             try {
-                liff.login({ redirectUri: window.location.href });
+                const currentUrl = new URL(window.location.href);
+                const destPage = getUrlParam('page') || 'user';
+                currentUrl.searchParams.set('page', destPage);
+                liff.login({ redirectUri: currentUrl.toString() });
             } catch (err) {
                 showRetryButton('ไม่สามารถเริ่มการเข้าสู่ระบบ LINE ได้ กรุณาลองใหม่อีกครั้ง');
             }
@@ -95,10 +98,10 @@
         function redirectToGas(idToken) {
             clearLoginAttempt();
             const destPage = getUrlParam('page') || 'user';
-            const params = new URLSearchParams({
-                page: destPage,
-                idToken: idToken
-            });
+            const params = new URLSearchParams();
+            params.set('page', destPage);
+            params.set('idToken', idToken || '');
+
             const targetUrl = GAS_EXEC_URL + '?' + params.toString();
             window.location.replace(targetUrl);
         }
