@@ -12,11 +12,13 @@
         const LIFF_ID = '2010633264-YTJe5dbM'; 
         const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec'; 
 
+        // ฟังก์ชันดึง Query Parameter จาก URL
         function getUrlParam(name) {
             const results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
             return results ? results[1] : null;
         }
 
+        // ฟังก์ชันตรวจสอบว่า ID Token หมดอายุหรือยัง
         function isTokenExpired(token) {
             if (!token) return true;
             try {
@@ -42,12 +44,14 @@
                 } else {
                     let idToken = liff.getIDToken();
                     
+                    // หาก Token เดิมหมดอายุ ระบบจะทำการล็อกอินใหม่เพื่อขอ Token ชุดล่าสุด
                     if (isTokenExpired(idToken)) {
                         document.getElementById('status-text').innerText = "เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...";
                         liff.login({ redirectUri: window.location.href });
                         return;
                     }
 
+                    // หาก Token ยังปกติ ส่งต่อไปยัง Google Apps Script
                     const destPage = getUrlParam('page') || 'user'; 
                     const targetUrl = GAS_EXEC_URL + '?page=' + destPage + '&idToken=' + encodeURIComponent(idToken);
                     window.location.href = targetUrl;
