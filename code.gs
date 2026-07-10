@@ -6,6 +6,15 @@ function getCategories() {
   return ['Office', 'Medical', 'Reagent'];
 }
 
+function getItemsForUser(userId) {
+  const owner = userId || 'unknown';
+  return [
+    { id: 'item-1', name: 'Office Paper', category: 'Office', quantity: 10, owner: owner },
+    { id: 'item-2', name: 'Mask', category: 'Medical', quantity: 25, owner: owner },
+    { id: 'item-3', name: 'Reagent A', category: 'Reagent', quantity: 5, owner: owner }
+  ];
+}
+
 function setLineChannelId(channelId) {
   PropertiesService.getScriptProperties().setProperty('LINE_CHANNEL_ID', channelId);
   return channelId;
