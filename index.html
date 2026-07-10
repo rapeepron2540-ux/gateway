@@ -9,13 +9,20 @@
     <p id="status-text">กำลังเข้าสู่ระบบและตรวจสอบสิทธิ์...</p>
 
     <script>
-        const LIFF_ID = '2010633264-YTJe5dbM'; 
-        const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec'; 
+        const LIFF_ID = '2010633264-YTJe5dbM';
+        const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec';
+
+        function updateStatus(message) {
+            const el = document.getElementById('status-text');
+            if (el) {
+                el.textContent = message;
+            }
+        }
 
         // ฟังก์ชันดึง Query Parameter จาก URL
         function getUrlParam(name) {
-            const results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-            return results ? results[1] : null;
+            const results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+            return results ? decodeURIComponent(results[1]) : null;
         }
 
         // ฟังก์ชันตรวจสอบว่า ID Token หมดอายุหรือยัง
@@ -30,35 +37,44 @@
 
                 const payload = JSON.parse(jsonPayload);
                 const currentTime = Math.floor(Date.now() / 1000);
-                
+
                 return payload.exp ? (currentTime >= payload.exp) : true;
             } catch (e) {
-                return true; 
+                return true;
             }
+        }
+
+        function redirectToGas(idToken) {
+            const destPage = getUrlParam('page') || 'user';
+            const params = new URLSearchParams({
+                page: destPage,
+                idToken: idToken
+            });
+            const targetUrl = GAS_EXEC_URL + '?' + params.toString();
+            window.location.replace(targetUrl);
         }
 
         liff.init({ liffId: LIFF_ID })
             .then(() => {
                 if (!liff.isLoggedIn()) {
-                    liff.login();
+                    updateStatus('กำลังเปิดหน้าเข้าสู่ระบบ LINE...');
+                    liff.login({ redirectUri: window.location.href });
                 } else {
-                    let idToken = liff.getIDToken();
-                    
-                    // หาก Token เดิมหมดอายุ ระบบจะทำการล็อกอินใหม่เพื่อขอ Token ชุดล่าสุด
+                    const idToken = liff.getIDToken();
+
                     if (isTokenExpired(idToken)) {
-                        document.getElementById('status-text').innerText = "เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...";
+                        updateStatus('เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...');
                         liff.login({ redirectUri: window.location.href });
                         return;
                     }
 
-                    // หาก Token ยังปกติ ส่งต่อไปยัง Google Apps Script
-                    const destPage = getUrlParam('page') || 'user'; 
-                    const targetUrl = GAS_EXEC_URL + '?page=' + destPage + '&idToken=' + encodeURIComponent(idToken);
-                    window.location.href = targetUrl;
+                    updateStatus('กำลังส่งต่อข้อมูลไปยังระบบ...');
+                    redirectToGas(idToken);
                 }
             })
             .catch((err) => {
                 console.error('LIFF Initialization failed', err);
+                updateStatus('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE กรุณาลองเปิดใหม่อีกครั้ง');
                 document.body.innerHTML = '<p>เกิดข้อผิดพลาดในการเชื่อมต่อ LINE กรุณาลองเปิดใหม่อีกครั้ง</p>';
             });
     </script>
