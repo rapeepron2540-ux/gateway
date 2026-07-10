@@ -12,11 +12,55 @@
         const LIFF_ID = '2010633264-YTJe5dbM';
         const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec';
 
+        const LOGIN_ATTEMPT_KEY = 'gateway-login-attempt';
+        const LOGIN_RETRY_KEY = 'gateway-login-retry-count';
+
         function updateStatus(message) {
             const el = document.getElementById('status-text');
             if (el) {
                 el.textContent = message;
             }
+        }
+
+        function getRetryCount() {
+            return Number(sessionStorage.getItem(LOGIN_RETRY_KEY) || '0');
+        }
+
+        function markLoginAttempt() {
+            sessionStorage.setItem(LOGIN_ATTEMPT_KEY, '1');
+            sessionStorage.setItem(LOGIN_RETRY_KEY, String(getRetryCount() + 1));
+        }
+
+        function clearLoginAttempt() {
+            sessionStorage.removeItem(LOGIN_ATTEMPT_KEY);
+            sessionStorage.removeItem(LOGIN_RETRY_KEY);
+        }
+
+        function showRetryButton(message) {
+            updateStatus(message);
+            if (!document.getElementById('retry-button')) {
+                const button = document.createElement('button');
+                button.id = 'retry-button';
+                button.textContent = 'ลองเข้าสู่ระบบอีกครั้ง';
+                button.style.marginTop = '12px';
+                button.onclick = function () {
+                    clearLoginAttempt();
+                    window.location.reload();
+                };
+                document.body.appendChild(button);
+            }
+        }
+
+        function startLoginFlow(message) {
+            const retryCount = getRetryCount();
+            if (retryCount >= 2) {
+                showRetryButton('การเข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+                return;
+            }
+
+            markLoginAttempt();
+            updateStatus(message);
+            liff.login({ redirectUri: window.location.href });
         }
 
         // ฟังก์ชันดึง Query Parameter จาก URL
@@ -45,6 +89,7 @@
         }
 
         function redirectToGas(idToken) {
+            clearLoginAttempt();
             const destPage = getUrlParam('page') || 'user';
             const params = new URLSearchParams({
                 page: destPage,
@@ -56,15 +101,19 @@
 
         liff.init({ liffId: LIFF_ID })
             .then(() => {
+                const loginAttempted = sessionStorage.getItem(LOGIN_ATTEMPT_KEY) === '1';
+
                 if (!liff.isLoggedIn()) {
-                    updateStatus('กำลังเปิดหน้าเข้าสู่ระบบ LINE...');
-                    liff.login({ redirectUri: window.location.href });
+                    if (loginAttempted) {
+                        updateStatus('กำลังรอการเข้าสู่ระบบจาก LINE... หากไม่เปลี่ยนแปลงให้กดปุ่มด้านล่าง');
+                    } else {
+                        startLoginFlow('กำลังเปิดหน้าเข้าสู่ระบบ LINE...');
+                    }
                 } else {
                     const idToken = liff.getIDToken();
 
                     if (isTokenExpired(idToken)) {
-                        updateStatus('เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...');
-                        liff.login({ redirectUri: window.location.href });
+                        startLoginFlow('เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...');
                         return;
                     }
 
@@ -74,8 +123,7 @@
             })
             .catch((err) => {
                 console.error('LIFF Initialization failed', err);
-                updateStatus('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE กรุณาลองเปิดใหม่อีกครั้ง');
-                document.body.innerHTML = '<p>เกิดข้อผิดพลาดในการเชื่อมต่อ LINE กรุณาลองเปิดใหม่อีกครั้ง</p>';
+                showRetryButton('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE กรุณาลองเปิดใหม่อีกครั้ง');
             });
     </script>
 </body>
