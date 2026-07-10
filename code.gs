@@ -1,6 +1,11 @@
 const LINE_VERIFY_URL = 'https://api.line.me/oauth2/v2.1/verify';
 var LAST_LINE_DEBUG_INFO_ = '';
 
+// Public Apps Script function used by google.script.run from the HTML page.
+function getCategories() {
+  return ['Office', 'Medical', 'Reagent'];
+}
+
 function setLineChannelId(channelId) {
   PropertiesService.getScriptProperties().setProperty('LINE_CHANNEL_ID', channelId);
   return channelId;
