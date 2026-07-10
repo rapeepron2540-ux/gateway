@@ -60,7 +60,11 @@
 
             markLoginAttempt();
             updateStatus(message);
-            liff.login({ redirectUri: window.location.href });
+            try {
+                liff.login({ redirectUri: window.location.href });
+            } catch (err) {
+                showRetryButton('ไม่สามารถเริ่มการเข้าสู่ระบบ LINE ได้ กรุณาลองใหม่อีกครั้ง');
+            }
         }
 
         // ฟังก์ชันดึง Query Parameter จาก URL
@@ -109,17 +113,17 @@
                     } else {
                         startLoginFlow('กำลังเปิดหน้าเข้าสู่ระบบ LINE...');
                     }
-                } else {
-                    const idToken = liff.getIDToken();
-
-                    if (isTokenExpired(idToken)) {
-                        startLoginFlow('เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...');
-                        return;
-                    }
-
-                    updateStatus('กำลังส่งต่อข้อมูลไปยังระบบ...');
-                    redirectToGas(idToken);
+                    return;
                 }
+
+                const idToken = liff.getIDToken();
+                if (!idToken || isTokenExpired(idToken)) {
+                    startLoginFlow('เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...');
+                    return;
+                }
+
+                updateStatus('กำลังส่งต่อข้อมูลไปยังระบบ...');
+                redirectToGas(idToken);
             })
             .catch((err) => {
                 console.error('LIFF Initialization failed', err);
