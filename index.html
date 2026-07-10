@@ -6,16 +6,33 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
-    <p>กำลังเข้าสู่ระบบ...</p>
+    <p id="status-text">กำลังเข้าสู่ระบบและตรวจสอบสิทธิ์...</p>
 
     <script>
-        const LIFF_ID = '2010633264-YTJe5dbM'; // ใส่ LIFF ID เต็มของคุณตรงนี้
-        const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec; // URL ของ Apps Script update agian
+        const LIFF_ID = '2010633264-YTJe5dbM'; 
+        const GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbyrA3KyhTvf-U_ZTj6Ly3ghn_jWmufaFRTlNn9IEDBVcE-kymUpJe13WoZN7r0Q-vkc/exec'; 
 
-        // ฟังก์ชันดึง Query Parameter จาก URL ของ Gateway เอง (เพื่อส่งต่อหน้า page ไปให้ GAS)
         function getUrlParam(name) {
             const results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-            return results ? Object.assign(results)[1] : null;
+            return results ? results[1] : null;
+        }
+
+        function isTokenExpired(token) {
+            if (!token) return true;
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+
+                const payload = JSON.parse(jsonPayload);
+                const currentTime = Math.floor(Date.now() / 1000);
+                
+                return payload.exp ? (currentTime >= payload.exp) : true;
+            } catch (e) {
+                return true; 
+            }
         }
 
         liff.init({ liffId: LIFF_ID })
@@ -23,18 +40,22 @@
                 if (!liff.isLoggedIn()) {
                     liff.login();
                 } else {
-                    // ดึง ID Token ที่ได้จากการ Login สำเร็จ (เป็นค่า JWT ที่ปลอมแปลงไม่ได้)
-                    const idToken = liff.getIDToken();
-                    const destPage = getUrlParam('page') || 'user'; // ถ้าไม่ได้ส่งหน้ามา ให้ default ไป user
+                    let idToken = liff.getIDToken();
                     
-                    // ส่ง idToken ไปที่ Apps Script ผ่าน URL Parameter
+                    if (isTokenExpired(idToken)) {
+                        document.getElementById('status-text').innerText = "เซสชันเดิมหมดอายุ กำลังรีเฟรชข้อมูลล็อกอินใหม่...";
+                        liff.login({ redirectUri: window.location.href });
+                        return;
+                    }
+
+                    const destPage = getUrlParam('page') || 'user'; 
                     const targetUrl = GAS_EXEC_URL + '?page=' + destPage + '&idToken=' + encodeURIComponent(idToken);
                     window.location.href = targetUrl;
                 }
             })
             .catch((err) => {
                 console.error('LIFF Initialization failed', err);
-                document.body.innerHTML = '<p>เกิดข้อผิดพลาดในการเชื่อมต่อ LINE</p>';
+                document.body.innerHTML = '<p>เกิดข้อผิดพลาดในการเชื่อมต่อ LINE กรุณาลองเปิดใหม่อีกครั้ง</p>';
             });
     </script>
 </body>
