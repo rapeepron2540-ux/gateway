@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<!-- ตัดสคริปต์ LIFF SDK ออกเรียบร้อยเพื่อความเสถียรและทำงานผ่าน Gateway โดยตรง -->
+<style>
+  :root{
+    --bg:#EEF1EF;
+    --surface:#FFFFFF;
+    --ink:#1E2A28;
+    --ink-soft:#5B6B67;
+    --line:#DCE3DF;
+    --primary:#2F6F5E;
+    --primary-dark:#234F43;
+    --primary-tint:#E7EFEC;
+    --danger-accent:#B23A3A;
+    --danger-bg:#FBE7E5;
+    --danger-ink:#8C2E2E;
+    --muted-bg:#F2F5F3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Sarabun',sans-serif;font-size:14px;padding-bottom:80px;
+  }
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 18px;background:var(--surface);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:30px;height:30px;border-radius:8px;background:var(--primary);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;
+  }
+  .brand h1{font-family:'Chakra Petch',sans-serif;font-size:16px;margin:0;}
+  .who{text-align:right;font-size:11.5px;color:var(--ink-soft);}
+  .who b{color:var(--ink);font-size:12.5px;display:block;}
+
+  .section{margin:14px 14px 0 14px;}
+  .list{display:flex;flex-direction:column;gap:10px;}
+  .batch-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;
+  }
+  .batch-card.cancelled{opacity:.6;}
+  .batch-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .batch-time{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);}
+  .status-badge{
+    font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;
+    background:var(--primary-tint);color:var(--primary-dark);
+  }
+  .status-badge.cancelled{background:var(--danger-bg);color:var(--danger-ink);}
+  .batch-items{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+  .batch-item-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-top:1px dashed var(--line);}
+  .batch-item-row:first-child{border-top:none;}
+  .batch-item-row .name{font-weight:600;}
+  .batch-item-row .qty{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);white-space:nowrap;margin-left:10px;}
+  .batch-actions{display:flex;justify-content:flex-end;margin-top:10px;}
+  .cancel-btn{
+    border:none;background:var(--danger-bg);color:var(--danger-ink);
+    padding:8px 14px;border-radius:8px;font-family:'Sarabun',sans-serif;
+    font-weight:600;font-size:12.5px;cursor:pointer;
+  }
+  .cancel-btn:active{transform:scale(.97);}
+  .cancelled-note{font-size:11.5px;color:var(--danger-ink);margin-top:8px;}
+
+  .empty-state{text-align:center;color:var(--ink-soft);padding:40px 10px;font-size:13px;}
+
+  .footer-bar{
+    position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);
+    padding:12px 14px;z-index:30;
+  }
+  .btn{
+    border:none;border-radius:9px;padding:13px 16px;font-family:'Sarabun',sans-serif;
+    font-weight:600;font-size:14px;cursor:pointer;width:100%;background:#fff;color:var(--ink-soft);border:1px solid var(--line);
+  }
+  .btn:active{transform:scale(.98);}
+
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(20,28,26,.5);
+    align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  .overlay.open{display:flex;}
+  .modal{background:#fff;border-radius:14px;padding:24px 22px;width:100%;max-width:380px;text-align:center;}
+  .modal h2{font-family:'Chakra Petch',sans-serif;font-size:17px;margin:0 0 6px 0;}
+  .success-icon{
+    width:52px;height:52px;border-radius:50%;background:var(--primary-tint);color:var(--primary);
+    display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px auto;
+  }
+  .timestamp{
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--muted-bg);
+    border-radius:7px;padding:8px;color:var(--ink-soft);margin-bottom:16px;
+  }
+  .btn-primary{background:var(--primary);color:#fff;border:none;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">03</div>
+    <h1>ประวัติการเบิก</h1>
+  </div>
+  <div class="who" id="whoBox">—</div>
+</div>
+
+<div class="section">
+  <div class="list" id="historyList">
+    <div class="empty-state">กำลังตรวจสอบสิทธิ์ผ่าน LINE...</div>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <button class="btn" id="backBtn">ย้อนกลับไปหน้าเบิกของ</button>
+</div>
+
+<!-- Result popup (ยกเลิกสำเร็จ) -->
+<div class="overlay" id="resultOverlay">
+  <div class="modal">
+    <div class="success-icon" id="resultIcon">✓</div>
+    <h2 id="resultTitle">ยกเลิกสำเร็จ</h2>
+    <div class="timestamp" id="resultTime"></div>
+    <button class="btn btn-primary" id="resultCloseBtn">ปิด</button>
+  </div>
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// CONFIG (รับค่าโดยตรงจาก Apps Script HTML Template ผ่านระบบ Gateway)
+// ------------------------------------------------------------------
+var SERVER_UID = "<?= verifiedUid ?>";
+var SERVER_NAME = "<?= verifiedName ?>";
+var SESSION_TOKEN = "<?= sessionToken ?>";
+
+let PROFILE = null; // {uid, name}
+
+function fmtDateTime(d){
+  if(!d) return '';
+  try{
+    const dt = new Date(d);
+    if(isNaN(dt.getTime())) return String(d);
+    return dt.toLocaleString('th-TH');
+  }catch(e){ return String(d); }
+}
+
+function authenticate(){
+  const listEl = document.getElementById('historyList');
+  try {
+    if(SERVER_UID && SERVER_UID !== "null" && SERVER_UID !== ""){
+      if(SERVER_NAME && SERVER_NAME !== "null" && SERVER_NAME !== ""){
+        PROFILE = { uid: SERVER_UID, name: SERVER_NAME };
+        document.getElementById('whoBox').innerHTML = '<b>'+PROFILE.name+'</b>';
+        loadHistory();
+      } else {
+        listEl.innerHTML = '<div class="empty-state">❌ ยังไม่ได้ลงทะเบียนในระบบ กรุณาเปิดหน้า "เบิกพัสดุ" เพื่อยืนยันชื่อก่อน</div>';
+      }
+    } else {
+      listEl.innerHTML = '<div class="empty-state">❌ ไม่พบข้อมูลการยืนยันตัวตน LINE กรุณาเข้าใช้งานผ่าน LINE App เท่านั้น</div>';
+    }
+  } catch(e) {
+    listEl.innerHTML = '<div class="empty-state">เกิดข้อผิดพลาดในการยืนยันตัวตน: ' + e.message + '</div>';
+  }
+}
+
+function loadHistory(){
+  document.getElementById('historyList').innerHTML = '<div class="empty-state">กำลังโหลดข้อมูล...</div>';
+  google.script.run.withSuccessHandler(batches=>{
+    if(!Array.isArray(batches)){
+      document.getElementById('historyList').innerHTML = '<div class="empty-state">โหลดข้อมูลไม่สำเร็จ (รูปแบบข้อมูลไม่ถูกต้อง) — ลองรีเฟรชหน้านี้</div>';
+      return;
+    }
+    renderHistory(batches);
+  }).withFailureHandler(err=>{
+    document.getElementById('historyList').innerHTML = '<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: '+err.message+'</div>';
+  }).getUserHistory(SESSION_TOKEN);
+}
+
+function renderHistory(batches){
+  const wrap = document.getElementById('historyList');
+  if(batches.length===0){
+    wrap.innerHTML = '<div class="empty-state">ยังไม่มีประวัติการเบิก</div>';
+    return;
+  }
+  wrap.innerHTML = batches.map(b=>{
+    const isCancelled = b.status === 'Cancelled';
+    const itemsHtml = b.items.map(it=>
+      `<div class="batch-item-row"><span class="name">${it.nameTh||it.nameEn}</span><span class="qty">${it.qty} ${it.unit||''}</span></div>`
+    ).join('');
+    return `
+    <div class="batch-card ${isCancelled?'cancelled':''}">
+      <div class="batch-head">
+        <span class="batch-time">${fmtDateTime(b.timestamp)}</span>
+        <span class="status-badge ${isCancelled?'cancelled':''}">${isCancelled?'ยกเลิกแล้ว':'สำเร็จ'}</span>
+      </div>
+      <div class="batch-items">${itemsHtml}</div>
+      ${isCancelled ? '<div class="cancelled-note">ยกเลิกเมื่อ '+fmtDateTime(b.cancelledAt)+'</div>' : ''}
+      ${(!isCancelled && b.canCancel) ? `<div class="batch-actions"><button class="cancel-btn" onclick="doCancel('${b.batchId}')">✕ ยกเลิกรายการนี้</button></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function doCancel(batchId){
+  if(!confirm('ยืนยันยกเลิกรายการเบิกนี้? ระบบจะคืนสต็อกกลับให้ทันที')) return;
+  google.script.run.withSuccessHandler(res=>{
+    loadHistory();
+    document.getElementById('resultTitle').textContent = 'ยกเลิกสำเร็จ';
+    document.getElementById('resultTime').textContent = new Date(res.timestamp).toLocaleString('th-TH');
+    document.getElementById('resultOverlay').classList.add('open');
+  }).withFailureHandler(err=>{
+    alert('ยกเลิกไม่สำเร็จ: '+err.message);
+  }).cancelRequisition(SESSION_TOKEN, batchId);
+}
+
+document.getElementById('resultCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('resultOverlay').classList.remove('open');
+});
+
+document.getElementById('backBtn').addEventListener('click', ()=>{
+  window.location.href = window.location.pathname + window.location.search.replace(/page=history/,'page=user') + (window.location.search.indexOf('page=')===-1 ? (window.location.search?'&':'?')+'page=user' : '');
+});
+
+// เริ่มต้นระบบตรวจสอบประวัติเบิก
+authenticate();
+</script>
+</body>
+</html>
